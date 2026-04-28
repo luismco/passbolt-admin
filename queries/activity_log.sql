@@ -6,7 +6,13 @@ SELECT
     WHEN 'Folder'   THEN 'Folder'
   END AS resource_type,
   ph.aco_foreign_key AS resource_id,
-  COALESCE(r.name, f.name, CONCAT('[deleted] ', ph.aco_foreign_key)) AS 'Resource Name',
+  CASE
+    WHEN ph.aco = 'Resource' AND r.deleted = 1
+      THEN CONCAT('[deleted] ')
+    WHEN ph.aco = 'Folder' AND f.id IS NULL
+      THEN CONCAT('[deleted] ')
+    ELSE COALESCE(r.name, f.name)
+  END AS 'Resource Name',
   CONCAT(
     SUBSTRING_INDEX(COALESCE(u.username, g.name), '@', 1),
     ' (',
