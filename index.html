@@ -66,7 +66,17 @@
     .header-title { font-family: var(--mono); font-size: 13px; font-weight: 500; color: #fff; letter-spacing: .05em; }
     .header-title span { color: var(--muted); font-weight: 400; }
 
-    /* NAV */
+    .passbolt-home {
+      display: flex; align-items: center; gap: 10px;
+      margin-left: auto; border-radius: 5px;
+      padding: 10px 20px; cursor: pointer; 
+      font-family: var(--mono); font-size: 13px; font-weight: 500; color: #fff;
+      background: var(--surface2);
+      transition: color .12s, background .12s, border-color .12s;
+    }
+    .passbolt-home:hover { color: var(--text); background: var(--accent); }
+
+     /* NAV */
     .nav-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,.5);
       z-index: 149; opacity: 0; pointer-events: none; transition: opacity .25s;
@@ -268,6 +278,7 @@
     <svg viewBox="0 0 16 16"><path d="M8 1a5 5 0 1 0 0 10A5 5 0 0 0 8 1zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"/><rect x="7" y="10" width="2" height="5" rx="1"/></svg>
   </div>
   <span class="header-title">passbolt <span id="headerSub">/ activity log</span></span>
+  <a class="passbolt-home" style="text-decoration:none" href="/">Return to Passbolt</a>
 </header>
 
 <div class="nav-overlay" id="navOverlay"></div>
