@@ -1,12 +1,26 @@
 <?php
+// PDO database connection, reads credentials from .env
 
-$db_host = 'localhost';
-$db_name = 'passbolt';
-$db_user = 'passbolt';
-$db_pass = 'passbolt';
-$db_charset = 'utf8mb4';
+function parse_env(string $path): void {
+    if (!file_exists($path)) {
+        die("Missing .env file. Copy .env.example to .env and fill in your values.\n");
+    }
+    foreach (file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        $line = trim($line);
+        if ($line === '' || str_starts_with($line, '#')) continue;
+        [$key, $value] = explode('=', $line, 2);
+        $_ENV[trim($key)] = trim($value);
+    }
+}
 
-$dsn = "mysql:host=$db_host;dbname=$db_name;charset=$db_charset";
+parse_env(__DIR__ . '/.env');
+
+$dsn = sprintf(
+    'mysql:host=%s;dbname=%s;charset=%s',
+    $_ENV['DB_HOST'],
+    $_ENV['DB_NAME'],
+    $_ENV['DB_CHARSET'] ?? 'utf8mb4'
+);
 
 $options = [
     PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
@@ -15,8 +29,8 @@ $options = [
 ];
 
 try {
-    $pdo = new PDO($dsn, $db_user, $db_pass, $options);
+    $pdo = new PDO($dsn, $_ENV['DB_USER'], $_ENV['DB_PASS'], $options);
 } catch (PDOException $e) {
     http_response_code(500);
-    die(json_encode(['error' => 'Database connection failed: ' . $e->getMessage()]));
+    die(json_encode(['error' => 'Database connection failed.']));
 }
