@@ -1,5 +1,4 @@
 <?php
-// app/db.php — PDO database connection
 
 $db_host = 'localhost';
 $db_name = 'passbolt';
