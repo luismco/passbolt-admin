@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Passbolt — Admin Tools</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg:        #0d0f12;
+      --surface:   #151820;
+      --surface2:  #1c2030;
+      --border:    #252a35;
+      --accent:    #e8354a;
+      --accent2:   #3a8fff;
+      --text:      #d4d8e2;
+      --muted:     #5a6070;
+      --mono:      'IBM Plex Mono', monospace;
+      --sans:      'IBM Plex Sans', sans-serif;
+      --nav-w:     240px;
+      --sidebar-w: min(600px, 55vw);
+      --header-h:  56px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* HEADER */
+    header {
+      position: fixed; top: 0; left: 0; right: 0;
+      height: var(--header-h);
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 20px; gap: 14px; z-index: 100;
+    }
+    .hamburger {
+      background: none; border: none; cursor: pointer;
+      display: flex; flex-direction: column; gap: 5px;
+      padding: 4px; flex-shrink: 0;
+    }
+    .hamburger span {
+      display: block; width: 20px; height: 2px;
+      background: var(--muted); border-radius: 2px;
+      transition: background .15s, transform .25s, opacity .2s;
+    }
+    .hamburger:hover span { background: var(--text); }
+    body.nav-open .hamburger span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    body.nav-open .hamburger span:nth-child(2) { opacity: 0; }
+    body.nav-open .hamburger span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    .header-logo {
+      width: 26px; height: 26px; background: var(--accent);
+      border-radius: 6px; display: grid; place-items: center; flex-shrink: 0;
+    }
+    .header-logo svg { width: 14px; height: 14px; fill: #fff; }
+    .header-title { font-family: var(--mono); font-size: 13px; font-weight: 500; color: #fff; letter-spacing: .05em; }
+    .header-title span { color: var(--muted); font-weight: 400; }
+
+    /* NAV */
+    .nav-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.5);
+      z-index: 149; opacity: 0; pointer-events: none; transition: opacity .25s;
+    }
+    body.nav-open .nav-overlay { opacity: 1; pointer-events: all; }
+
+    nav {
+      position: fixed; top: 0; left: 0; bottom: 0;
+      width: var(--nav-w); background: var(--surface);
+      border-right: 1px solid var(--border); z-index: 150;
+      transform: translateX(-100%);
+      transition: transform .25s cubic-bezier(.4,0,.2,1);
+      display: flex; flex-direction: column;
+      padding-top: var(--header-h);
+    }
+    body.nav-open nav { transform: translateX(0); }
+
+    .nav-section { padding: 20px 0 8px; }
+    .nav-label {
+      font-family: var(--mono); font-size: 10px; font-weight: 500;
+      letter-spacing: .1em; text-transform: uppercase;
+      color: var(--muted); padding: 0 20px 8px;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 20px; cursor: pointer; font-size: 13px;
+      color: var(--muted); border-left: 2px solid transparent;
+      transition: color .12s, background .12s, border-color .12s;
+    }
+    .nav-item:hover { color: var(--text); background: var(--surface2); }
+    .nav-item.active { color: #fff; border-left-color: var(--accent); background: var(--surface2); }
+    .nav-item svg { width: 15px; height: 15px; flex-shrink: 0; fill: currentColor; opacity: .7; }
+
+    /* LAYOUT */
+    .main { margin-top: var(--header-h); transition: margin-right .25s; }
+    body.sidebar-open .main { margin-right: var(--sidebar-w); }
+
+    /* VIEWS */
+    .view { display: none; padding: 24px 32px 48px; }
+    .view.active { display: block; }
+
+    .view-heading { margin-bottom: 20px; }
+    .view-heading h2 {
+      font-family: var(--mono); font-size: 15px; font-weight: 500;
+      color: #fff; letter-spacing: .04em; margin-bottom: 3px;
+    }
+    .view-heading p { font-size: 12px; color: var(--muted); }
+
+    /* TOOLBAR */
+    .toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+    .toolbar input[type="search"],
+    .toolbar select {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); font-family: var(--sans);
+      font-size: 13px; padding: 7px 12px; outline: none; transition: border-color .15s;
+    }
+    .toolbar input[type="search"] { width: 240px; }
+    .toolbar input[type="search"]:focus,
+    .toolbar select:focus { border-color: var(--accent2); }
+    .counter { margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--muted); }
+    .counter strong { color: var(--text); }
+
+    /* TABLE */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th {
+      font-family: var(--mono); font-size: 10px; font-weight: 500;
+      letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+      padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border);
+      white-space: nowrap; cursor: pointer; user-select: none; transition: color .12s;
+    }
+    thead th:hover { color: var(--text); }
+    thead th.sorted { color: var(--accent2); }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; cursor: pointer; }
+    tbody tr:hover { background: var(--surface); }
+    tbody tr.selected { background: var(--surface2); box-shadow: inset 2px 0 0 var(--accent2); }
+    tbody td { padding: 11px 14px; vertical-align: middle; white-space: nowrap; }
+
+    .cell-name { color: #fff; }
+    .cell-mono { font-family: var(--mono); font-size: 12px; }
+    .cell-num  { font-family: var(--mono); font-size: 12px; color: var(--accent2); }
+    .cell-date { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+    .cell-never { font-family: var(--mono); font-size: 11px; color: var(--muted); font-style: italic; }
+
+    .badge {
+      display: inline-flex; align-items: center; font-family: var(--mono);
+      font-size: 10px; font-weight: 500; border-radius: 4px; padding: 3px 7px;
+    }
+    .badge-password { background: #1a1f2e; color: #7aa8f0; }
+    .badge-folder   { background: #1f1a28; color: #b07af0; }
+    .badge-read     { background: #1a1f2e; color: #7aa8f0; }
+    .badge-update   { background: #1f1a10; color: #f5a623; }
+    .badge-owner    { background: #1a2a1a; color: #4caf6e; }
+    .badge-via      { background: #1a1e1a; color: #7a9a7a; font-size: 10px; }
+
+    /* STATES */
+    .state-loading, .state-error, .state-empty {
+      text-align: center; padding: 64px 0; font-size: 13px; color: var(--muted);
+    }
+    .state-error { color: var(--accent); }
+    .spinner {
+      display: inline-block; width: 16px; height: 16px;
+      border: 2px solid var(--border); border-top-color: var(--accent2);
+      border-radius: 50%; animation: spin .7s linear infinite;
+      vertical-align: middle; margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* SIDEBAR */
+    .sidebar {
+      position: fixed; top: var(--header-h); right: 0; bottom: 0;
+      width: var(--sidebar-w); background: var(--surface);
+      border-left: 1px solid var(--border); z-index: 90;
+      transform: translateX(100%);
+      transition: transform .25s cubic-bezier(.4,0,.2,1);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    body.sidebar-open .sidebar { transform: translateX(0); }
+
+    .sidebar-header {
+      padding: 18px 20px 14px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: flex-start; gap: 10px; flex-shrink: 0;
+    }
+    .sidebar-header-text { flex: 1; min-width: 0; }
+    .sidebar-header-text h3 {
+      font-family: var(--mono); font-size: 13px; color: #fff; margin-bottom: 3px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .sidebar-header-text p {
+      font-size: 11px; color: var(--muted); text-transform: capitalize;
+    }
+    .sidebar-close {
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-size: 18px; line-height: 1;
+      padding: 2px 4px; flex-shrink: 0; transition: color .12s;
+    }
+    .sidebar-close:hover { color: var(--text); }
+
+    /* Sidebar filter bar */
+    .sidebar-toolbar {
+      padding: 10px 16px; border-bottom: 1px solid var(--border);
+      display: flex; gap: 8px; flex-shrink: 0; flex-wrap: wrap;
+    }
+    .sidebar-toolbar input[type="search"],
+    .sidebar-toolbar select {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 5px; color: var(--text); font-family: var(--sans);
+      font-size: 12px; padding: 5px 10px; outline: none; transition: border-color .15s;
+      flex: 1; min-width: 100px;
+    }
+    .sidebar-toolbar input[type="search"]:focus,
+    .sidebar-toolbar select:focus { border-color: var(--accent2); }
+
+    .sidebar-body { flex: 1; overflow-y: auto; overflow-x: hidden; }
+
+    .sidebar-section-label {
+      font-family: var(--mono); font-size: 10px; font-weight: 500;
+      letter-spacing: .1em; text-transform: uppercase;
+      color: var(--muted); padding: 12px 12px 8px;
+    }
+    .sidebar-section-count { color: var(--accent2); margin-left: 6px; }
+
+    .sidebar-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .sidebar-table thead th {
+      font-family: var(--mono); font-size: 10px; letter-spacing: .07em;
+      text-transform: uppercase; color: var(--muted); padding: 10px 12px;
+      border-bottom: 1px solid var(--border); cursor: default; text-align: left;
+      white-space: nowrap;
+    }
+    .sidebar-table tbody tr { border-bottom: 1px solid var(--border); cursor: default; }
+    .sidebar-table tbody tr:hover { background: var(--surface2); }
+    .sidebar-table tbody td { padding: 9px 12px; vertical-align: middle; white-space: nowrap; }
+
+    /* MOBILE */
+    @media (max-width: 640px) {
+      :root { --sidebar-w: 100vw; }
+
+      .view { padding: 16px 12px 48px; }
+      .view > .toolbar input[type="search"] { width: 100%; }
+
+      /* Main tables scroll within container */
+      .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+      /* Sidebar goes full screen on mobile */
+      .sidebar { left: 0; width: 100vw; border-left: none; border-top: 1px solid var(--border); }
+      body.sidebar-open .main { margin-right: 0; }
+
+      .counter { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <button class="hamburger" id="hamburgerBtn" aria-label="Toggle menu">
+    <span></span><span></span><span></span>
+  </button>
+  <div class="header-logo">
+    <svg viewBox="0 0 16 16"><path d="M8 1a5 5 0 1 0 0 10A5 5 0 0 0 8 1zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"/><rect x="7" y="10" width="2" height="5" rx="1"/></svg>
+  </div>
+  <span class="header-title">passbolt <span id="headerSub">/ activity log</span></span>
+</header>
+
+<div class="nav-overlay" id="navOverlay"></div>
+
+<nav id="navDrawer">
+  <div class="nav-section">
+    <div class="nav-label">Audit</div>
+    <div class="nav-item active" data-view="activity">
+      <svg viewBox="0 0 16 16"><path d="M2 3h12v1H2zm0 3h12v1H2zm0 3h8v1H2zm0 3h6v1H2z"/></svg>
+      Activity Log
+    </div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">Sharing</div>
+    <div class="nav-item" data-view="passwords">
+      <svg viewBox="0 0 16 16"><path d="M8 1a3 3 0 0 0-3 3v1H3v9h10V5h-2V4a3 3 0 0 0-3-3zm0 1.5a1.5 1.5 0 0 1 1.5 1.5v1h-3V4A1.5 1.5 0 0 1 8 2.5zM8 8a1.5 1.5 0 1 1 0 3A1.5 1.5 0 0 1 8 8z"/></svg>
+      Shared Passwords
+    </div>
+    <div class="nav-item" data-view="folders">
+      <svg viewBox="0 0 16 16"><path d="M1 3.5A1.5 1.5 0 0 1 2.5 2H6l2 2h5.5A1.5 1.5 0 0 1 15 5.5v7A1.5 1.5 0 0 1 13.5 14h-11A1.5 1.5 0 0 1 1 12.5v-9z"/></svg>
+      Shared Folders
+    </div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">Users</div>
+    <div class="nav-item" data-view="users">
+      <svg viewBox="0 0 16 16"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-5 6s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3z"/></svg>
+      Users
+    </div>
+  </div>
+</nav>
+
+<div class="main" id="mainContent">
+
+  <!-- Activity Log -->
+  <div class="view active" id="view-activity">
+    <div class="view-heading">
+      <h2>Activity Log</h2>
+      <p>Password and folder sharing events, ordered by most recent</p>
+    </div>
+    <div class="toolbar">
+      <input type="search" id="actSearch" placeholder="Filter by user, resource, action…" />
+      <select id="actTypeFilter">
+        <option value="">All types</option>
+        <option value="Password">Password</option>
+        <option value="Folder">Folder</option>
+      </select>
+      <select id="actActionFilter">
+        <option value="">All actions</option>
+        <option value="Share">Share</option>
+        <option value="Permission update">Permission update</option>
+        <option value="Revoke">Revoke</option>
+      </select>
+      <span class="counter" id="actCounter"></span>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr>
+        <th data-table="act" data-col="User">User</th>
+        <th data-table="act" data-col="resource_type">Type</th>
+        <th data-table="act" data-col="Resource Name">Resource</th>
+        <th data-table="act" data-col="Shared With">Shared With</th>
+        <th data-table="act" data-col="Action">Action</th>
+        <th data-table="act" data-col="Modified at">Date</th>
+      </tr></thead>
+      <tbody id="actBody"><tr><td colspan="6" class="state-loading"><span class="spinner"></span>Loading…</td></tr></tbody>
+    </table></div>
+  </div>
+
+  <!-- Shared Passwords -->
+  <div class="view" id="view-passwords">
+    <div class="view-heading">
+      <h2>Shared Passwords</h2>
+      <p>Click any row to see who has access</p>
+    </div>
+    <div class="toolbar">
+      <input type="search" id="pwSearch" placeholder="Filter by name…" />
+      <span class="counter" id="pwCounter"></span>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr>
+        <th data-table="pw" data-col="Password Name">Password</th>
+        <th data-table="pw" data-col="Users">Users</th>
+        <th data-table="pw" data-col="Groups">Groups</th>
+        <th data-table="pw" data-col="Last Modified">Last Modified</th>
+      </tr></thead>
+      <tbody id="pwBody"><tr><td colspan="4" class="state-loading"><span class="spinner"></span>Loading…</td></tr></tbody>
+    </table></div>
+  </div>
+
+  <!-- Shared Folders -->
+  <div class="view" id="view-folders">
+    <div class="view-heading">
+      <h2>Shared Folders</h2>
+      <p>Click any row to see who has access</p>
+    </div>
+    <div class="toolbar">
+      <input type="search" id="folSearch" placeholder="Filter by name…" />
+      <span class="counter" id="folCounter"></span>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr>
+        <th data-table="fol" data-col="Folder Name">Folder</th>
+        <th data-table="fol" data-col="Users">Users</th>
+        <th data-table="fol" data-col="Groups">Groups</th>
+        <th data-table="fol" data-col="Number of Password (Recursive)">Passwords</th>
+        <th data-table="fol" data-col="Last Modified">Last Modified</th>
+      </tr></thead>
+      <tbody id="folBody"><tr><td colspan="5" class="state-loading"><span class="spinner"></span>Loading…</td></tr></tbody>
+    </table></div>
+  </div>
+
+  <!-- Users -->
+  <div class="view" id="view-users">
+    <div class="view-heading">
+      <h2>Users</h2>
+      <p>Click any row to see full resource access breakdown</p>
+    </div>
+    <div class="toolbar">
+      <input type="search" id="usrSearch" placeholder="Filter by username…" />
+      <span class="counter" id="usrCounter"></span>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr>
+        <th data-table="usr" data-col="username">Username</th>
+        <th data-table="usr" data-col="total_passwords">Accessible Passwords</th>
+        <th data-table="usr" data-col="last_logged_in">Last Login</th>
+      </tr></thead>
+      <tbody id="usrBody"><tr><td colspan="3" class="state-loading"><span class="spinner"></span>Loading…</td></tr></tbody>
+    </table></div>
+  </div>
+
+</div>
+
+<!-- Right Sidebar -->
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-header-text">
+      <h3 id="sidebarTitle">—</h3>
+      <p id="sidebarSubtitle">Access list</p>
+    </div>
+    <button class="sidebar-close" id="sidebarClose">✕</button>
+  </div>
+  <!-- Extra filter bar, shown only for user detail -->
+  <div class="sidebar-toolbar" id="sidebarToolbar" style="display:none">
+    <input type="search" id="sidebarSearch" placeholder="Filter resources…" />
+    <select id="sidebarTypeFilter">
+      <option value="">All types</option>
+      <option value="password">Password</option>
+      <option value="folder">Folder</option>
+    </select>
+  </div>
+  <div class="sidebar-body" id="sidebarBody"></div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────
+const rows  = { act: [], pw: [], fol: [], usr: [] };
+const sorts = {
+  act: { col: 'Modified at',   asc: false },
+  pw:  { col: 'Last Modified', asc: false },
+  fol: { col: 'Last Modified', asc: false },
+  usr: { col: 'total_passwords', asc: false },
+};
+let selectedId      = null;
+let sidebarMode     = null; // 'password' | 'folder' | 'user'
+let sidebarData     = [];
+let sidebarContents = [];
+
+// ── Utilities ──────────────────────────────────────────────────────────
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const fmtDate = v => v ? new Date(v).toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
+const loading = n => `<tr><td colspan="${n}" class="state-loading"><span class="spinner"></span>Loading…</td></tr>`;
+const empty   = n => `<tr><td colspan="${n}" class="state-empty">No records found</td></tr>`;
+const errRow  = (m, n) => `<tr><td colspan="${n}" class="state-error">⚠ ${esc(m)}</td></tr>`;
+
+async function fetchJSON(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const j = await r.json();
+  if (j.error) throw new Error(j.error);
+  return j;
+}
+
+function sorted(data, t) {
+  const { col, asc } = sorts[t];
+  return [...data].sort((a, b) => {
+    const va = String(a[col] ?? ''), vb = String(b[col] ?? '');
+    // numeric-aware sort
+    const na = parseFloat(va), nb = parseFloat(vb);
+    if (!isNaN(na) && !isNaN(nb)) return asc ? na - nb : nb - na;
+    return asc ? va.localeCompare(vb) : vb.localeCompare(va);
+  });
+}
+
+// ── Navigation ─────────────────────────────────────────────────────────
+const subtitles = {
+  activity: '/ activity log',
+  passwords: '/ shared passwords',
+  folders:  '/ shared folders',
+  users:    '/ users',
+};
+
+function switchView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item[data-view]').forEach(n => n.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  document.querySelector(`.nav-item[data-view="${name}"]`).classList.add('active');
+  document.getElementById('headerSub').textContent = subtitles[name];
+  closeSidebar();
+  closeNav();
+}
+
+const closeNav = () => document.body.classList.remove('nav-open');
+document.getElementById('hamburgerBtn').addEventListener('click', () => document.body.classList.toggle('nav-open'));
+document.getElementById('navOverlay').addEventListener('click', closeNav);
+document.querySelectorAll('.nav-item[data-view]').forEach(el =>
+  el.addEventListener('click', () => switchView(el.dataset.view))
+);
+
+// ── Sorting ────────────────────────────────────────────────────────────
+document.querySelectorAll('thead th[data-table]').forEach(th => {
+  th.addEventListener('click', () => {
+    const t = th.dataset.table, col = th.dataset.col;
+    sorts[t].asc = sorts[t].col === col ? !sorts[t].asc : true;
+    sorts[t].col = col;
+    document.querySelectorAll(`th[data-table="${t}"]`).forEach(h => h.classList.remove('sorted'));
+    th.classList.add('sorted');
+    renders[t]();
+  });
+});
+
+// ── Sidebar ────────────────────────────────────────────────────────────
+function openSidebar(name, id, mode) {
+  sidebarMode = mode;
+  selectedId  = id;
+  document.getElementById('sidebarTitle').textContent = name;
+  document.getElementById('sidebarBody').innerHTML = `<table class="sidebar-table"><tbody>${loading(mode === 'user' ? 4 : 3)}</tbody></table>`;
+
+  // Show filter toolbar only for user detail
+  document.getElementById('sidebarToolbar').style.display = mode === 'user' ? 'flex' : 'none';
+  document.getElementById('sidebarSearch').value = '';
+  document.getElementById('sidebarTypeFilter').value = '';
+
+  // Set correct thead
+  if (mode === 'user') {
+// user-detail mode - table built in renderSidebar
+  } else {
+// standard mode - table built in renderSidebar
+  }
+
+  document.getElementById('sidebarSubtitle').textContent =
+    mode === 'password' ? 'Password — Access List' :
+    mode === 'folder'   ? 'Folder — Access List & Contents' :
+                          'User — Resource Access';
+
+  document.body.classList.add('sidebar-open');
+
+  const url =
+    mode === 'password' ? `api/password_detail.php?id=${encodeURIComponent(id)}` :
+    mode === 'folder'   ? `api/folder_detail.php?id=${encodeURIComponent(id)}`   :
+                          `api/user_detail.php?id=${encodeURIComponent(id)}`;
+
+  // For folders, also fetch contents in parallel
+  if (mode === 'folder') {
+    Promise.all([
+      fetchJSON(url),
+      fetchJSON(`api/folder_contents.php?id=${encodeURIComponent(id)}`)
+    ])
+      .then(([accessJson, contentsJson]) => {
+        sidebarData = accessJson.data;
+        sidebarContents = contentsJson.data;
+        renderSidebar();
+      })
+      .catch(e => {
+        document.getElementById('sidebarBody').innerHTML = `<table class="sidebar-table"><tbody>${errRow(e.message, 3)}</tbody></table>`;
+      });
+  } else {
+    fetchJSON(url)
+      .then(j => { sidebarData = j.data; sidebarContents = []; renderSidebar(); })
+      .catch(e => {
+        const cols = mode === 'user' ? 4 : 3;
+        document.getElementById('sidebarBody').innerHTML = `<table class="sidebar-table"><tbody>${errRow(e.message, cols)}</tbody></table>`;
+      });
+  }
+}
+
+function closeSidebar() {
+  document.body.classList.remove('sidebar-open');
+  selectedId      = null;
+  sidebarMode     = null;
+  sidebarData     = [];
+  sidebarContents = [];
+  document.querySelectorAll('tbody tr.selected').forEach(r => r.classList.remove('selected'));
+}
+
+document.getElementById('sidebarClose').addEventListener('click', closeSidebar);
+document.getElementById('sidebarSearch').addEventListener('input', renderSidebar);
+document.getElementById('sidebarTypeFilter').addEventListener('input', renderSidebar);
+
+const permBadge = p => {
+  const cls = p === 'Owner' ? 'badge-owner' : p === 'Update' ? 'badge-update' : 'badge-read';
+  return `<span class="badge ${cls}">${esc(p ?? '—')}</span>`;
+};
+const typeBadgeSmall = t => `<span class="badge ${t === 'password' ? 'badge-password' : 'badge-folder'}">${esc(t)}</span>`;
+
+function renderSidebar() {
+  if (!sidebarData.length) {
+    document.getElementById('sidebarBody').innerHTML = empty(sidebarMode === 'user' ? 4 : 3);
+    return;
+  }
+
+  if (sidebarMode === 'user') {
+    const search  = document.getElementById('sidebarSearch').value.toLowerCase();
+    const typeF   = document.getElementById('sidebarTypeFilter').value;
+    let data = sidebarData.filter(r =>
+      (!search || (r['resource_name'] ?? '').toLowerCase().includes(search)) &&
+      (!typeF  || r['resource_type'] === typeF)
+    );
+    if (!data.length) { document.getElementById('sidebarBody').innerHTML = `<table class="sidebar-table user-detail"><tbody>${empty(4)}</tbody></table>`; return; }
+    document.getElementById('sidebarBody').innerHTML = `
+      <table class="sidebar-table user-detail">
+        <thead><tr><th>Resource</th><th>Type</th><th>Permission</th><th>Via</th></tr></thead>
+        <tbody>${data.map(r => `
+          <tr>
+            <td class="cell-name">${esc(r['resource_name'])}</td>
+            <td>${typeBadgeSmall(r['resource_type'])}</td>
+            <td>${permBadge(r['permission'])}</td>
+            <td><span class="badge badge-via">${esc(r['access_via'])}</span></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } else {
+    const sectionLabel = sidebarMode === 'folder'
+      ? `<div class="sidebar-section-label">Access List <span class="sidebar-section-count">${sidebarData.length}</span></div>`
+      : '';
+    const rows = sidebarData.map(r => `
+      <tr>
+        <td>${esc(r['Shared with'])}</td>
+        <td>${permBadge(r['Permission'])}</td>
+        <td class="cell-date">${fmtDate(r['Last Modified'])}</td>
+      </tr>`).join('');
+    document.getElementById('sidebarBody').innerHTML = sectionLabel + `
+      <table class="sidebar-table">
+        <thead><tr><th>Shared With</th><th>Permission</th><th>Modified</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+
+    if (sidebarMode === 'folder') {
+      renderFolderContents();
+    }
+  }
+}
+
+function renderFolderContents() {
+  const rows = sidebarContents.length
+    ? sidebarContents.map(r => `
+        <tr>
+          <td class="cell-name">${esc(r['item_name'] ?? '—')}</td>
+          <td>${typeBadgeSmall(r['item_type'] === 'Resource' ? 'password' : 'folder')}</td>
+        </tr>`).join('')
+    : `<tr><td colspan="2" class="state-empty" style="padding:20px 0">Empty folder</td></tr>`;
+
+  const contentsHtml = `
+    <div class="sidebar-section-label" style="margin-top:0; border-top: 1px solid var(--border);">
+      Folder Contents <span class="sidebar-section-count">${sidebarContents.length}</span>
+    </div>
+    <table class="sidebar-table">
+      <thead><tr><th>Name</th><th>Type</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+
+  document.getElementById('sidebarBody').insertAdjacentHTML('beforeend', contentsHtml);
+}
+
+// ── Row click helper ───────────────────────────────────────────────────
+function attachRowClicks(bodyId, mode) {
+  document.getElementById(bodyId).querySelectorAll('tr[data-id]').forEach(tr => {
+    tr.addEventListener('click', () => {
+      const rowMode = mode ?? tr.dataset.type;
+      if (selectedId === tr.dataset.id && sidebarMode === rowMode) { closeSidebar(); return; }
+      selectedId = tr.dataset.id;
+      document.querySelectorAll('tbody tr.selected').forEach(r => r.classList.remove('selected'));
+      tr.classList.add('selected');
+      openSidebar(tr.dataset.name, tr.dataset.id, rowMode);
+    });
+  });
+}
+
+// ── Activity Log ───────────────────────────────────────────────────────
+async function loadActivity() {
+  document.getElementById('actBody').innerHTML = loading(6);
+  try {
+    const j = await fetchJSON('api/activity.php');
+    rows.act = j.data; renderActivity();
+  } catch(e) { document.getElementById('actBody').innerHTML = errRow(e.message, 6); }
+}
+
+function renderActivity() {
+  const search  = document.getElementById('actSearch').value.toLowerCase();
+  const typeF   = document.getElementById('actTypeFilter').value;
+  const actionF = document.getElementById('actActionFilter').value;
+  let data = rows.act.filter(r => {
+    const t = Object.values(r).join(' ').toLowerCase();
+    return (!search || t.includes(search)) && (!typeF || r['resource_type'] === typeF) && (!actionF || r['Action'] === actionF);
+  });
+  data = sorted(data, 'act');
+  document.getElementById('actCounter').innerHTML = `<strong>${data.length}</strong> of ${rows.act.length} events`;
+  if (!data.length) { document.getElementById('actBody').innerHTML = empty(6); return; }
+  const actionStyle = a => a === 'Share' ? 'color:#4caf6e' : a === 'Revoke' ? 'color:var(--accent)' : 'color:#f5a623';
+  const tBadge = t => `<span class="badge ${t === 'Password' ? 'badge-password' : 'badge-folder'}">${esc(t)}</span>`;
+  document.getElementById('actBody').innerHTML = data.map(r => `
+    <tr data-id="${esc(r['resource_id'])}" data-name="${esc(r['Resource Name'])}" data-type="${r['resource_type'] === 'Password' ? 'password' : 'folder'}">
+      <td class="cell-mono">${esc(r['User'])}</td>
+      <td>${tBadge(r['resource_type'])}</td>
+      <td class="cell-name">${esc(r['Resource Name'])}</td>
+      <td>${esc(r['Shared With'])}</td>
+      <td style="${actionStyle(r['Action'])}">${esc(r['Action'])}</td>
+      <td class="cell-date">${fmtDate(r['Modified at'])}</td>
+    </tr>`).join('');
+  attachRowClicks('actBody', null); // type comes from data-type attribute
+}
+['actSearch','actTypeFilter','actActionFilter'].forEach(id =>
+  document.getElementById(id).addEventListener('input', renderActivity));
+
+// ── Shared Passwords ───────────────────────────────────────────────────
+async function loadPasswords() {
+  document.getElementById('pwBody').innerHTML = loading(4);
+  try {
+    const j = await fetchJSON('api/shared_passwords.php');
+    rows.pw = j.data; renderPasswords();
+  } catch(e) { document.getElementById('pwBody').innerHTML = errRow(e.message, 4); }
+}
+
+function renderPasswords() {
+  const search = document.getElementById('pwSearch').value.toLowerCase();
+  let data = rows.pw.filter(r => !search || r['Password Name'].toLowerCase().includes(search));
+  data = sorted(data, 'pw');
+  document.getElementById('pwCounter').innerHTML = `<strong>${data.length}</strong> of ${rows.pw.length} passwords`;
+  if (!data.length) { document.getElementById('pwBody').innerHTML = empty(4); return; }
+  document.getElementById('pwBody').innerHTML = data.map(r => `
+    <tr data-id="${esc(r['id'])}" data-name="${esc(r['Password Name'])}" data-type="password">
+      <td class="cell-name">${esc(r['Password Name'])}</td>
+      <td class="cell-num">${esc(r['Users'])}</td>
+      <td class="cell-num">${esc(r['Groups'])}</td>
+      <td class="cell-date">${fmtDate(r['Last Modified'])}</td>
+    </tr>`).join('');
+  attachRowClicks('pwBody', 'password');
+}
+document.getElementById('pwSearch').addEventListener('input', renderPasswords);
+
+// ── Shared Folders ─────────────────────────────────────────────────────
+async function loadFolders() {
+  document.getElementById('folBody').innerHTML = loading(5);
+  try {
+    const j = await fetchJSON('api/shared_folders.php');
+    rows.fol = j.data; renderFolders();
+  } catch(e) { document.getElementById('folBody').innerHTML = errRow(e.message, 5); }
+}
+
+function renderFolders() {
+  const search = document.getElementById('folSearch').value.toLowerCase();
+  let data = rows.fol.filter(r => !search || r['Folder Name'].toLowerCase().includes(search));
+  data = sorted(data, 'fol');
+  document.getElementById('folCounter').innerHTML = `<strong>${data.length}</strong> of ${rows.fol.length} folders`;
+  if (!data.length) { document.getElementById('folBody').innerHTML = empty(5); return; }
+  document.getElementById('folBody').innerHTML = data.map(r => `
+    <tr data-id="${esc(r['id'])}" data-name="${esc(r['Folder Name'])}" data-type="folder">
+      <td class="cell-name">${esc(r['Folder Name'])}</td>
+      <td class="cell-num">${esc(r['Users'])}</td>
+      <td class="cell-num">${esc(r['Groups'])}</td>
+      <td class="cell-num">${esc(r['Number of Password (Recursive)'])}</td>
+      <td class="cell-date">${fmtDate(r['Last Modified'])}</td>
+    </tr>`).join('');
+  attachRowClicks('folBody', 'folder');
+}
+document.getElementById('folSearch').addEventListener('input', renderFolders);
+
+// ── Users ──────────────────────────────────────────────────────────────
+async function loadUsers() {
+  document.getElementById('usrBody').innerHTML = loading(3);
+  try {
+    const j = await fetchJSON('api/users.php');
+    rows.usr = j.data; renderUsers();
+  } catch(e) { document.getElementById('usrBody').innerHTML = errRow(e.message, 3); }
+}
+
+function renderUsers() {
+  const search = document.getElementById('usrSearch').value.toLowerCase();
+  let data = rows.usr.filter(r => !search || r['username'].toLowerCase().includes(search));
+  data = sorted(data, 'usr');
+  document.getElementById('usrCounter').innerHTML = `<strong>${data.length}</strong> of ${rows.usr.length} users`;
+  if (!data.length) { document.getElementById('usrBody').innerHTML = empty(3); return; }
+  document.getElementById('usrBody').innerHTML = data.map(r => {
+    const lastLogin = r['last_logged_in']
+      ? `<td class="cell-date">${fmtDate(r['last_logged_in'])}</td>`
+      : `<td class="cell-never">Never</td>`;
+    return `
+    <tr data-id="${esc(r['id'])}" data-name="${esc(r['username'])}" data-type="user">
+      <td class="cell-name">${esc(r['username'])}</td>
+      <td class="cell-num">${esc(r['total_passwords'])}</td>
+      ${lastLogin}
+    </tr>`;
+  }).join('');
+  attachRowClicks('usrBody', 'user');
+}
+document.getElementById('usrSearch').addEventListener('input', renderUsers);
+
+// ── Render map ─────────────────────────────────────────────────────────
+const renders = { act: renderActivity, pw: renderPasswords, fol: renderFolders, usr: renderUsers };
+
+// ── Init ───────────────────────────────────────────────────────────────
+loadActivity();
+loadPasswords();
+loadFolders();
+loadUsers();
+</script>
+</body>
+</html>
