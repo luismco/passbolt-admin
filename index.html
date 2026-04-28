@@ -526,15 +526,15 @@ function openSidebar(name, id, mode) {
   document.body.classList.add('sidebar-open');
 
   const url =
-    mode === 'password' ? `api/password_detail.php?id=${encodeURIComponent(id)}` :
-    mode === 'folder'   ? `api/folder_detail.php?id=${encodeURIComponent(id)}`   :
-                          `api/user_detail.php?id=${encodeURIComponent(id)}`;
+    mode === 'password' ? `portal/api/password_detail.php?id=${encodeURIComponent(id)}` :
+    mode === 'folder'   ? `portal/api/folder_detail.php?id=${encodeURIComponent(id)}`   :
+                          `portal/api/user_detail.php?id=${encodeURIComponent(id)}`;
 
   // For folders, also fetch contents in parallel
   if (mode === 'folder') {
     Promise.all([
       fetchJSON(url),
-      fetchJSON(`api/folder_contents.php?id=${encodeURIComponent(id)}`)
+      fetchJSON(`portal/api/folder_contents.php?id=${encodeURIComponent(id)}`)
     ])
       .then(([accessJson, contentsJson]) => {
         sidebarData = accessJson.data;
@@ -660,7 +660,7 @@ function attachRowClicks(bodyId, mode) {
 async function loadActivity() {
   document.getElementById('actBody').innerHTML = loading(6);
   try {
-    const j = await fetchJSON('api/activity.php');
+    const j = await fetchJSON('portal/api/activity.php');
     rows.act = j.data; renderActivity();
   } catch(e) { document.getElementById('actBody').innerHTML = errRow(e.message, 6); }
 }
@@ -701,7 +701,7 @@ function renderActivity() {
 async function loadPasswords() {
   document.getElementById('pwBody').innerHTML = loading(4);
   try {
-    const j = await fetchJSON('api/shared_passwords.php');
+    const j = await fetchJSON('portal/api/shared_passwords.php');
     rows.pw = j.data; renderPasswords();
   } catch(e) { document.getElementById('pwBody').innerHTML = errRow(e.message, 4); }
 }
@@ -727,7 +727,7 @@ document.getElementById('pwSearch').addEventListener('input', renderPasswords);
 async function loadFolders() {
   document.getElementById('folBody').innerHTML = loading(5);
   try {
-    const j = await fetchJSON('api/shared_folders.php');
+    const j = await fetchJSON('portal/api/shared_folders.php');
     rows.fol = j.data; renderFolders();
   } catch(e) { document.getElementById('folBody').innerHTML = errRow(e.message, 5); }
 }
@@ -754,7 +754,7 @@ document.getElementById('folSearch').addEventListener('input', renderFolders);
 async function loadUsers() {
   document.getElementById('usrBody').innerHTML = loading(3);
   try {
-    const j = await fetchJSON('api/users.php');
+    const j = await fetchJSON('portal/api/users.php');
     rows.usr = j.data; renderUsers();
   } catch(e) { document.getElementById('usrBody').innerHTML = errRow(e.message, 3); }
 }
