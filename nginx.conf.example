@@ -1,0 +1,42 @@
+# passbolt-admin
+# SETUP:
+#   1. Add the following include line inside your passbolt server {} block
+#      (typically /etc/nginx/conf.d/passbolt_ssl.conf), just before the
+#      closing brace:
+#
+#        include /etc/nginx/conf.d/passbolt.d/*.conf;
+#
+#   2. Create the include directory:
+#        mkdir -p /etc/nginx/conf.d/passbolt.d
+#
+#   3. Copy this file there:
+#        cp nginx.conf.example /etc/nginx/conf.d/passbolt.d/passbolt-admin.conf
+#
+#   4. Edit the values marked with <-- CHANGE THIS
+#
+#   5. Test and reload:
+#        nginx -t && systemctl reload nginx
+#
+# NOTE: This is a location block only — it relies on the parent server {}
+#       block in passbolt's config for SSL, server_name, and PHP handling.
+
+# Redirect /portal to /portal/ (trailing slash)
+location = /portal {                                    # <-- CHANGE THIS: must match location path below (without trailing slash)
+    return 301 /portal/;                               # <-- CHANGE THIS: must match location path below
+}
+
+location /portal/ {                                     # <-- CHANGE THIS: mount path (e.g. /admin/ or /tools/)
+    alias /opt/passbolt-admin/;                         # <-- CHANGE THIS: absolute path to install directory
+
+    index index.php index.html;
+
+    location ~ ^/portal/(.+\.php)$ {                   # <-- CHANGE THIS: must match location path above
+        include fastcgi_params;
+        fastcgi_pass unix:/run/php-fpm/www.sock;        # <-- CHANGE THIS if using TCP: 127.0.0.1:9000
+        fastcgi_param SCRIPT_FILENAME /opt/passbolt-admin/$1;  # <-- CHANGE THIS: must match alias above
+    }
+
+    location ~* \.(sql|md|env)$ {
+        deny all;
+    }
+}

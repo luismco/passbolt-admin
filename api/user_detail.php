@@ -1,6 +1,11 @@
 <?php
 header('Content-Type: application/json');
-require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../auth.php';
+$user = portal_auth_check();
+portal_log($user, '/portal/api/user_detail.php', $_GET['id'] ?? null);
+require_once __DIR__ . '/../auth.php';
+portal_auth_check();
 
 $id = $_GET['id'] ?? '';
 if (!preg_match('/^[0-9a-f-]{36}$/i', $id)) {
