@@ -6,7 +6,7 @@ header('Access-Control-Allow-Origin: *');
 
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../auth.php';
-portal_auth_check($pdo);
+portal_auth_check();
 
 $sql = file_get_contents(__DIR__ . '/../queries/activity_log.sql');
 

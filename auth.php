@@ -1,73 +1,110 @@
 <?php
-// app/auth.php — validates passbolt session and enforces admin role
+// app/auth.php — validate Passbolt session via API and enforce admin role
 
-function portal_auth_check(PDO $pdo): void {
-    $cookie_name = 'passbolt_session';
+function portal_auth_check(): void {
+    $api_url = get_passbolt_base_url() . '/users/me.json';
 
-    // 1. No session cookie → redirect to passbolt login
-    if (empty($_COOKIE[$cookie_name])) {
-        header('Location: /');
-        exit;
+    $cookie = $_SERVER['HTTP_COOKIE'] ?? '';
+
+    $headers = [
+        'Cookie: ' . $cookie
+    ];
+
+    $ch = curl_init($api_url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => $headers,
+        CURLOPT_TIMEOUT => 5,
+
+        // Uncomment if using self-signed certs (homelab setups)
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_SSL_VERIFYHOST => false,
+    ]);
+
+    $response = curl_exec($ch);
+
+    if ($response === false) {
+        fail_auth();
     }
 
-    $session_id = preg_replace('/[^a-z0-9]/', '', $_COOKIE[$cookie_name]);
-    if (empty($session_id)) {
-        header('Location: /');
-        exit;
+    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    // Not authenticated → redirect to Passbolt login
+    if ($status !== 200) {
+        fail_auth();
     }
 
-    // 2. Find session file in systemd private tmp
-    //    php-fpm runs in a private /tmp namespace under systemd, so we search
-    //    for the known pattern rather than hardcoding the hash in the path
-    $session_file = find_session_file($session_id);
+    $data = json_decode($response, true);
 
-    if (!$session_file || !is_readable($session_file)) {
-        header('Location: /');
-        exit;
+    // Validate structure and enforce admin role
+    if (
+        empty($data['body']['role']['name']) ||
+        $data['body']['role']['name'] !== 'admin'
+    ) {
+        deny_access();
     }
+}
 
-    // 3. Parse session data to extract user id
-    $session_data = file_get_contents($session_file);
-    $user_id = parse_session_user_id($session_data);
 
-    if (!$user_id) {
-        header('Location: /');
-        exit;
-    }
+/**
+ * Build Passbolt base URL dynamically based on current request
+ */
+function get_passbolt_base_url(): string {
+    $scheme = (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']))
+        ? $_SERVER['HTTP_X_FORWARDED_PROTO']
+        : ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http');
 
-    // 4. Check user exists, is active, and has admin role
-    try {
-        $stmt = $pdo->prepare("
-            SELECT u.id
-            FROM users u
-            JOIN roles r ON r.id = u.role_id
-            WHERE u.id = :user_id
-              AND u.active = 1
-              AND u.deleted = 0
-              AND r.name = 'admin'
-            LIMIT 1
-        ");
-        $stmt->execute([':user_id' => $user_id]);
-        $user = $stmt->fetch();
-    } catch (PDOException $e) {
-        http_response_code(500);
-        die('Auth check failed.');
-    }
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
 
-    if (!$user) {
-        http_response_code(403);
-        die('
+    return $scheme . '://' . $host;
+}
+
+
+/**
+ * Redirect to Passbolt login
+ */
+function fail_auth(): void {
+    header('Location: /');
+    exit;
+}
+
+
+/**
+ * Deny access with simple UI
+ */
+function deny_access(): void {
+    http_response_code(403);
+    echo <<<HTML
 <!DOCTYPE html>
 <html>
 <head>
   <title>Access Denied</title>
   <style>
-    body { background:#0d0f12; color:#d4d8e2; font-family:sans-serif;
-           display:flex; align-items:center; justify-content:center; height:100vh; margin:0; }
+    body {
+      background:#0d0f12;
+      color:#d4d8e2;
+      font-family:sans-serif;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      height:100vh;
+      margin:0;
+    }
     .box { text-align:center; }
-    h1 { color:#e8354a; font-size:1.4rem; margin-bottom:.5rem; }
-    p { color:#5a6070; font-size:.9rem; }
-    a { color:#3a8fff; text-decoration:none; }
+    h1 {
+      color:#e8354a;
+      font-size:1.4rem;
+      margin-bottom:.5rem;
+    }
+    p {
+      color:#5a6070;
+      font-size:.9rem;
+    }
+    a {
+      color:#3a8fff;
+      text-decoration:none;
+    }
   </style>
 </head>
 <body>
@@ -77,45 +114,7 @@ function portal_auth_check(PDO $pdo): void {
     <p><a href="/">← Back to Passbolt</a></p>
   </div>
 </body>
-</html>');
-    }
-}
-
-function find_session_file(string $session_id): ?string {
-    // Direct path first (non-systemd or known path)
-    $direct = "/tmp/sess_{$session_id}";
-    if (file_exists($direct)) {
-        return $direct;
-    }
-
-    // Search inside systemd private tmp namespaces for php-fpm
-    $pattern = '/tmp/systemd-private-*/php-fpm.service-*/tmp/sess_' . $session_id;
-    $matches = glob($pattern);
-    if (!empty($matches)) {
-        return $matches[0];
-    }
-
-    return null;
-}
-
-function parse_session_user_id(string $data): ?string {
-    // PHP session format: key|serialized_value key2|serialized_value ...
-    // We need Auth|a:1:{s:4:"user";a:1:{s:2:"id";s:36:"<uuid>"}}
-    if (!preg_match('/Auth\|(.+?)(?=[A-Za-z_]+\||$)/s', $data, $m)) {
-        return null;
-    }
-
-    $auth = @unserialize($m[1]);
-    if (!is_array($auth) || empty($auth['user']['id'])) {
-        return null;
-    }
-
-    $id = $auth['user']['id'];
-
-    // Validate it looks like a UUID
-    if (!preg_match('/^[0-9a-f-]{36}$/i', $id)) {
-        return null;
-    }
-
-    return $id;
+</html>
+HTML;
+    exit;
 }

@@ -1,6 +1,8 @@
 <?php
 header('Content-Type: application/json');
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../auth.php';
+portal_auth_check();
 
 $id = $_GET['id'] ?? '';
 if (!preg_match('/^[0-9a-f-]{36}$/i', $id)) {
