@@ -5,19 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Passbolt — Admin Tools</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Code:ital,wght,MONO@0,300..800,1;1,300..800,1&family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;600&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg:        #0d0f12;
-      --surface:   #151820;
-      --surface2:  #1c2030;
+      --bg:        #1a1a1a;
+      --surface:   #202020;
+      --surface2:  #113155;
       --border:    #252a35;
-      --accent:    #e8354a;
+      --accent:    #3c85d7;
       --accent2:   #3a8fff;
       --text:      #d4d8e2;
       --muted:     #5a6070;
-      --mono:      'IBM Plex Mono', monospace;
-      --sans:      'IBM Plex Sans', sans-serif;
+      --mono:      'Google Sans Code', monospace;
+      --sans:      'Open Sans', sans-serif;
       --nav-w:     240px;
       --sidebar-w: min(600px, 55vw);
       --header-h:  56px;
@@ -59,22 +60,21 @@
     body.nav-open .hamburger span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
     .header-logo {
-      width: 26px; height: 26px; background: var(--accent);
-      border-radius: 6px; display: grid; place-items: center; flex-shrink: 0;
+      height: 26px;
+      display: grid; place-items: center; flex-shrink: 0;
     }
-    .header-logo svg { width: 14px; height: 14px; fill: #fff; }
-    .header-title { font-family: var(--mono); font-size: 13px; font-weight: 500; color: #fff; letter-spacing: .05em; }
+    .header-title { font-family: var(--mono); font-size: 13px; font-weight: 500; color: #fff; }
     .header-title span { color: var(--muted); font-weight: 400; }
 
     .passbolt-home {
       display: flex; align-items: center; gap: 10px;
-      margin-left: auto; border-radius: 5px;
+      margin-left: auto; border-radius: 0.4rem;
       padding: 10px 20px; cursor: pointer; 
       font-family: var(--mono); font-size: 13px; font-weight: 500; color: #fff;
-      background: var(--surface2);
+      background: var(--accent);
       transition: color .12s, background .12s, border-color .12s;
     }
-    .passbolt-home:hover { color: var(--text); background: var(--accent); }
+    .passbolt-home:hover { color: var(--text); background: var(--surface2); }
 
      /* NAV */
     .nav-overlay {
@@ -103,12 +103,12 @@
     .nav-item {
       display: flex; align-items: center; gap: 10px;
       padding: 10px 20px; cursor: pointer; font-size: 13px;
-      color: var(--muted); border-left: 2px solid transparent;
+      color: #fff; border-left: 2px solid transparent;
       transition: color .12s, background .12s, border-color .12s;
     }
-    .nav-item:hover { color: var(--text); background: var(--surface2); }
-    .nav-item.active { color: #fff; border-left-color: var(--accent); background: var(--surface2); }
-    .nav-item svg { width: 15px; height: 15px; flex-shrink: 0; fill: currentColor; opacity: .7; }
+    .nav-item.active { color: #fff; font-weight:bold; background: var(--surface2); }
+    .nav-item:hover { color: #3C85D7; background: var(--surface2); }
+    .nav-item svg { width: 15px; height: 15px; flex-shrink: 0; fill: #fff; opacity: .7; }
 
     /* LAYOUT */
     .main { margin-top: var(--header-h); transition: margin-right .25s; }
@@ -275,9 +275,9 @@
     <span></span><span></span><span></span>
   </button>
   <div class="header-logo">
-    <svg viewBox="0 0 16 16"><path d="M8 1a5 5 0 1 0 0 10A5 5 0 0 0 8 1zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"/><rect x="7" y="10" width="2" height="5" rx="1"/></svg>
+    <img alt="Logo Passbolt" loading="lazy" height="20" decoding="async" data-nimg="1" style="color:transparent" src="assets/images/passbolt_logo.svg">
   </div>
-  <span class="header-title">passbolt <span id="headerSub">/ activity log</span></span>
+  <span class="header-title">admin tools <span id="headerSub">/ activity log</span></span>
   <a class="passbolt-home" style="text-decoration:none" href="/">Return to Passbolt</a>
 </header>
 

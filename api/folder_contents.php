@@ -1,6 +1,9 @@
 <?php
 header('Content-Type: application/json');
-require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../auth.php';
+$user = portal_auth_check();
+portal_log($user, '/portal/api/folder_contents.php', $_GET['id'] ?? null);
 require_once __DIR__ . '/../auth.php';
 portal_auth_check();
 
